@@ -706,7 +706,7 @@ Text=`Hello {B},{z}`}end end local z=u:TreeNode{Title='With headers'}local A,B=z
 local F=p:Column()F:Label{Text=E}continue end local F=p:NextColumn()F:Label{Text
 =`Hello {D},{C}`}end end end end 
 function a.f()
-    local defaultIcons = {
+    return {
         Dot='rbxasset://textures/whiteCircle.png',
         Arrow='rbxasset://textures/ui/AvatarContextMenu_Arrow.png',
         Close='rbxasset://textures/loading/cancelButton.png',
@@ -748,23 +748,6 @@ function a.f()
         Server='rbxassetid://9692125126',Wedge='rbxassetid://9086583059',
         Drill='rbxassetid://11959189471',Character='rbxassetid://13285102351'
     }
-
-    -- 2. 如果存在本地资产功能，仅在本地文件有效时覆盖，否则保留默认值
-    local folderPath = (getgenv and getgenv().assetpath) or "GcView@awakenkn/GcView@Assets"
-    local getasset = getcustomasset
-    if getasset and isfile then
-        for name, _ in pairs(defaultIcons) do
-            local path = ("%s/%s.png"):format(folderPath, name)
-            if isfile(path) then
-                local ok, result = pcall(getasset, path)
-                if ok and result then
-                    defaultIcons[name] = result
-                end
-            end
-        end
-    end
-
-    return defaultIcons
 end
 function a.g
 ()return{Light=Color3.fromRGB(50,150,250),Dark=Color3.fromRGB(30,66,115),
@@ -952,10 +935,29 @@ local q=tick()local r=q-o local s=self:IsDoubleClick(r)o=s and 0 or q self:
 UpdateWindowFocuses()end)local p=function()local p,q=self.TooltipsContainer,#m>0
 p.Visible=q if not q then return end local r,s=aa:GetMouseLocation()local t=n.
 AbsolutePosition p.Position=UDim2.fromOffset(r-t.X+i,s-t.Y+i)end c.RenderStepped
-:Connect(p)end function aa:CheckImportState()if self.Initialised then return end
-local g=self.PrefabsId local h=ad:CheckAssetUrl(g)local i,m=pcall(function()
-return ad:NewReference(d:LoadLocalAsset(h))end)self:Init{Prefabs=i and m or nil}
-end function aa:GetVersion()return self.Version end function aa:IsMobileDevice()
+:Connect(p)end function aa:CheckImportState()
+    if self.Initialised then return end
+    local g = self.PrefabsId
+    local h = ad:CheckAssetUrl(g)
+    local prefabsObj = nil
+    
+    -- 优先使用 game:GetObjects（执行器环境标准方式，不会阻塞卡死）
+    local ok, objs = pcall(function()
+        return game:GetObjects(h)
+    end)
+    if ok and type(objs) == "table" and objs[1] then
+        prefabsObj = objs[1]
+    else
+        -- 保底容错，若失败才尝试 LoadLocalAsset
+        local ok2, m = pcall(function()
+            return ad:NewReference(d:LoadLocalAsset(h))
+        end)
+        if ok2 and m then prefabsObj = m end
+    end
+
+    self:Init{Prefabs = prefabsObj}
+end
+ function aa:GetVersion()return self.Version end function aa:IsMobileDevice()
 return b.TouchEnabled end function aa:IsConsoleDevice()return b.GamepadEnabled
 end function aa:GetScreenSize()return workspace.CurrentCamera.ViewportSize end
 function aa:LoadPrefabs()local g,h=self.PlayerGui,'ReGui-Prefabs'local i=script:
