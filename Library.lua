@@ -926,19 +926,38 @@ UpdateWindowFocuses()end)local p=function()local p,q=self.TooltipsContainer,#m>0
 p.Visible=q if not q then return end local r,s=aa:GetMouseLocation()local t=n.
 AbsolutePosition p.Position=UDim2.fromOffset(r-t.X+i,s-t.Y+i)end c.RenderStepped
 :Connect(p)self.Initialised=true end function aa:CheckImportState()if self.Initialised then return end
-local g=self.Prefabs
-if not g and self.PrefabsId~=0 then
-local h=ad:CheckAssetUrl(self.PrefabsId)
-local i,m=pcall(function()return ad:NewReference(d:LoadLocalAsset(h))end)
-if i then g=m end
-end
-self:Init{Prefabs=g}
+self:Init()
 end function aa:GetVersion()return self.Version end function aa:IsMobileDevice()
 return b.TouchEnabled end function aa:IsConsoleDevice()return b.GamepadEnabled
 end function aa:GetScreenSize()return workspace.CurrentCamera.ViewportSize end
-function aa:LoadPrefabs()local g,h=self.PlayerGui,'ReGui-Prefabs'local i=script and script:
-WaitForChild(h,2)if i then return i end local m=g:WaitForChild(h,2)if m then
-return m end return nil end function aa:CheckConfig(g,h,i,m)return ad:
+function aa:LoadPrefabs()
+    -- Executor environments can expose script as a table, or omit it entirely.
+    for _, parent in pairs({script, self.PlayerGui}) do
+        if typeof(parent) == 'Instance' then
+            local prefabs = parent:FindFirstChild('ReGui-Prefabs')
+            if prefabs then return prefabs end
+        end
+    end
+    if not self.PrefabsId or self.PrefabsId == 0 then return nil end
+    local url = ad:CheckAssetUrl(self.PrefabsId)
+    local failures = {}
+    local function tryLoad(name, loader)
+        local ok, result = pcall(loader)
+        if ok then
+            if type(result) == 'table' then result = result[1] end
+            if typeof(result) == 'Instance' then return ad:NewReference(result) end
+            result = 'loader did not return an Instance'
+        end
+        table.insert(failures, name .. ': ' .. tostring(result))
+        return nil
+    end
+    local prefabs = tryLoad('LoadLocalAsset', function() return d:LoadLocalAsset(url) end)
+    if prefabs then return prefabs end
+    prefabs = tryLoad('GetObjects', function() return game:GetObjects(url) end)
+    if prefabs then return prefabs end
+    error('[ReGui] Could not load Prefabs. Pass a Prefabs model to Init.\n' ..
+        table.concat(failures, '\n'), 0)
+end function aa:CheckConfig(g,h,i,m)return ad:
 CheckConfig(g,h,i,m)end function aa:CreateInstance(g,h,i)local m=Instance.new(g,
 h)if i then local n=i.UsePropertiesList if not n then self:SetProperties(m,i)
 else self:ApplyFlags{Object=m,Class=i}end end return m end function aa:
